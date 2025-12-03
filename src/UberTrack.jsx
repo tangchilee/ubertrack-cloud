@@ -24,7 +24,8 @@ import {
   doc, 
   setDoc, 
   deleteDoc, 
-  writeBatch 
+  writeBatch,
+  enableIndexedDbPersistence // 1. 新增引入這個功能
 } from 'firebase/firestore';
 
 // ==========================================
@@ -44,6 +45,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// 2. 啟用離線快取 (節流模式)
+// 這會讓瀏覽器快取資料，下次開啟時不需重新下載全部，大幅節省讀取次數
+enableIndexedDbPersistence(db)
+  .catch((err) => {
+      if (err.code == 'failed-precondition') {
+          // 如果使用者同時開了多個分頁，只有第一個分頁能使用快取
+          console.log("Persistence failed: Multiple tabs open");
+      } else if (err.code == 'unimplemented') {
+          // 瀏覽器不支援 (極少見)
+          console.log("Persistence failed: Browser not supported");
+      }
+  });
 
 // ==========================================
 // 2. UTILITY FUNCTIONS
