@@ -243,43 +243,61 @@ const ComboChart = ({ title, data, barKey, lineKey, barColor, lineColor, barLabe
 
 const MonthStatsCard = ({ data, workDays }) => {
     if (!data) return null;
-    const { totalIncome, tripCount, totalHours, hourlyWage, avgNetTripCost, avgGrossTripCost, month } = data;
+    const { totalIncome, tripCount, totalHours, hourlyWage, avgNetTripCost, avgGrossTripCost, month, tripCost, promo, tips, other } = data;
     
     return (
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-3xl p-5 shadow-md text-white mb-2 relative overflow-hidden">
+             {/* Decorative Icon */}
             <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4"><DollarSign size={100} /></div>
+            
             <div className="relative z-10">
-                <div className="text-emerald-100 text-xs font-bold mb-1 uppercase tracking-wider flex items-center gap-1"><Calendar size={12} /> 本月 ({month}月) 累積收入</div>
-                <div className="text-3xl font-black tracking-tight">{formatCurrency(totalIncome)}</div>
-                <div className="flex gap-3 mt-2 text-xs font-medium text-emerald-50 border-b border-emerald-400/30 pb-3 mb-3">
-                    <span>{tripCount} 單</span><span>•</span><span>{formatDecimal(totalHours)} h</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                    <div className="bg-emerald-50 rounded-lg p-2 backdrop-blur-sm text-gray-800">
-                        <div className="text-[10px] text-gray-500 mb-0.5 font-bold">平均時薪</div>
-                        <div className="text-sm font-extrabold">${formatNumber(hourlyWage ? hourlyWage.toFixed(1) : 0)}</div>
-                    </div>
-                    <div className="bg-emerald-50 rounded-lg p-2 backdrop-blur-sm text-gray-800">
-                        <div className="text-[10px] text-gray-500 mb-0.5 font-bold">淨行程</div>
-                        <div className="text-sm font-extrabold">${formatDecimal(avgNetTripCost)}</div>
-                    </div>
-                    <div className="bg-emerald-50 rounded-lg p-2 backdrop-blur-sm text-gray-800">
-                        <div className="text-[10px] text-gray-500 mb-0.5 font-bold">含獎勵</div>
-                        <div className="text-sm font-extrabold">${formatDecimal(avgGrossTripCost)}</div>
+                {/* Header */}
+                <div className="flex flex-col items-center">
+                     <div className="text-emerald-100 text-xs font-bold mb-1 uppercase tracking-wider flex items-center gap-1"><Calendar size={12} /> 本月 ({month}月) 累積收入</div>
+                     <div className="text-3xl font-black tracking-tight">{formatCurrency(totalIncome)}</div>
+                     <div className="flex gap-3 mt-2 text-xs font-medium text-emerald-50 border-b border-emerald-400/30 pb-3 mb-3">
+                        <span>{tripCount} 單</span><span>•</span><span>{formatDecimal(totalHours)} h</span>
                     </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-emerald-400/30">
-                    <div className="bg-emerald-50 rounded-lg p-2 flex flex-col items-center justify-center text-gray-800">
-                        <span className="text-[10px] text-gray-500 font-bold mb-0.5">整天</span>
-                        <div className="flex items-center gap-1"><Sun size={12} className="text-orange-500" /><span className="text-sm font-extrabold">{workDays.fullDays}天</span></div>
+
+                {/* Content */}
+                <div className="space-y-3">
+                    {/* Income Breakdown */}
+                    <h3 className="text-sm font-bold text-emerald-50 ml-1">收入明細</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-3 text-center border border-emerald-100 flex flex-col justify-center"><div className="text-xs text-gray-500 mb-1 font-bold">行程</div><div className="text-lg font-black text-gray-900">${formatCurrencyShort(tripCost)}</div></div>
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-3 text-center border border-emerald-100 flex flex-col justify-center"><div className="text-xs text-emerald-600 mb-1 font-bold">獎勵</div><div className="text-lg font-black text-emerald-600">${formatCurrencyShort(promo)}</div></div>
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-3 text-center border border-emerald-100 flex flex-col justify-center"><div className="text-xs text-yellow-600 mb-1 font-bold">小費</div><div className="text-lg font-black text-yellow-600">${formatCurrencyShort(tips)}</div></div>
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-3 text-center border border-emerald-100 flex flex-col justify-center"><div className="text-xs text-purple-600 mb-1 font-bold">其他</div><div className="text-lg font-black text-purple-600">${formatCurrencyShort(other)}</div></div>
                     </div>
-                    <div className="bg-emerald-50 rounded-lg p-2 flex flex-col items-center justify-center text-gray-800">
-                        <span className="text-[10px] text-gray-500 font-bold mb-0.5">半天</span>
-                        <div className="flex items-center gap-1"><CloudSun size={12} className="text-blue-500" /><span className="text-sm font-extrabold">{workDays.halfDays}天</span></div>
+
+                    {/* Efficiency */}
+                    <h3 className="text-sm font-bold text-emerald-50 ml-1 mt-2">效率分析</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-gray-500 mb-0.5 font-bold">總工時</div><div className="text-base font-extrabold text-gray-900">{formatDecimal(totalHours)}h</div></div>
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-gray-500 mb-0.5 font-bold">總單量</div><div className="text-base font-extrabold text-gray-900">{tripCount}</div></div>
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-emerald-700 mb-0.5 font-bold">平均時薪</div><div className="text-base font-extrabold text-emerald-600">${formatNumber(hourlyWage ? hourlyWage.toFixed(1) : 0)}</div></div>
                     </div>
-                    <div className="bg-emerald-50 rounded-lg p-2 flex flex-col items-center justify-center text-gray-800">
-                        <span className="text-[10px] text-gray-500 font-bold mb-0.5">休假</span>
-                        <div className="flex items-center gap-1"><Palmtree size={12} className="text-gray-400" /><span className="text-sm font-extrabold">{workDays.offDays}天</span></div>
+                    <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl flex justify-between items-center px-3"><div className="text-[10px] text-gray-500 font-bold">每趟淨行程</div><div className="text-base font-extrabold text-gray-900">${formatDecimal(avgNetTripCost)}</div></div>
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl flex justify-between items-center px-3"><div className="text-[10px] text-emerald-700 font-bold">含獎勵均價</div><div className="text-base font-extrabold text-emerald-600">${formatDecimal(avgGrossTripCost)}</div></div>
+                    </div>
+                    
+                    {/* Work Days */}
+                    <h3 className="text-sm font-bold text-emerald-50 ml-1 mt-2">休假狀況</h3>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-2 flex flex-col items-center justify-center">
+                            <div className="flex items-center gap-1 text-orange-500 mb-0.5"><Sun size={14}/> <span className="text-[10px] font-bold">整天</span></div>
+                            <span className="text-base font-black text-gray-800">{workDays.fullDays}天</span>
+                        </div>
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-2 flex flex-col items-center justify-center">
+                            <div className="flex items-center gap-1 text-blue-500 mb-0.5"><CloudSun size={14}/> <span className="text-[10px] font-bold">半天</span></div>
+                            <span className="text-base font-black text-gray-800">{workDays.halfDays}天</span>
+                        </div>
+                        <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-2 flex flex-col items-center justify-center">
+                            <div className="flex items-center gap-1 text-gray-400 mb-0.5"><Palmtree size={14}/> <span className="text-[10px] font-bold">休假</span></div>
+                            <span className="text-base font-black text-gray-800">{workDays.offDays}天</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1410,34 +1428,57 @@ export default function UberTrackV3_Cloud() {
         const dStr = getLocalDateString(r.date);
         if (!dStr) return;
 
+        // Force Parse Numeric Values from Record
+        const rTotalIncome = parseFloat(r.totalIncome) || 0;
+        const rTripCost = parseFloat(r.tripCost) || 0;
+        const rPromo = parseFloat(r.promo) || 0;
+        const rTips = parseFloat(r.tips) || 0;
+        const rOther = parseFloat(r.other) || 0;
+        const rTripCount = parseFloat(r.tripCount) || 0;
+        const rTotalHoursDec = parseFloat(r.totalHoursDec) || 0;
+
+        // Reconstruct safe record object
+        const safeRecord = {
+            ...r,
+            totalIncome: rTotalIncome,
+            tripCost: rTripCost,
+            promo: rPromo,
+            tips: rTips,
+            other: rOther,
+            tripCount: rTripCount,
+            totalHoursDec: rTotalHoursDec,
+            hourlyWage: rTotalHoursDec > 0 ? rTotalIncome / rTotalHoursDec : 0,
+            tripsPerHour: rTotalHoursDec > 0 ? rTripCount / rTotalHoursDec : 0
+        };
+
         if (!rMap[dStr]) {
-            rMap[dStr] = { ...r, count: 1 }; 
+            rMap[dStr] = { ...safeRecord, count: 1 }; 
         } else {
-            rMap[dStr].totalIncome += r.totalIncome;
-            rMap[dStr].tripCost += r.tripCost;
-            rMap[dStr].promo += r.promo;
-            rMap[dStr].tips += r.tips;
-            rMap[dStr].other += r.other;
-            rMap[dStr].tripCount += r.tripCount;
-            rMap[dStr].totalHoursDec += r.totalHoursDec;
+            rMap[dStr].totalIncome += safeRecord.totalIncome;
+            rMap[dStr].tripCost += safeRecord.tripCost;
+            rMap[dStr].promo += safeRecord.promo;
+            rMap[dStr].tips += safeRecord.tips;
+            rMap[dStr].other += safeRecord.other;
+            rMap[dStr].tripCount += safeRecord.tripCount;
+            rMap[dStr].totalHoursDec += safeRecord.totalHoursDec;
             rMap[dStr].hourlyWage = rMap[dStr].totalHoursDec > 0 ? rMap[dStr].totalIncome / rMap[dStr].totalHoursDec : 0;
             rMap[dStr].tripsPerHour = rMap[dStr].totalHoursDec > 0 ? rMap[dStr].tripCount / rMap[dStr].totalHoursDec : 0;
         }
 
         if (dStr.includes(String(currentYear))) {
-            annualIncome += r.totalIncome;
-            annualTime += r.totalHoursDec;
-            annualTrips += r.tripCount;
-            annualTripCost += r.tripCost;
-            annualPromo += r.promo;
+            annualIncome += safeRecord.totalIncome;
+            annualTime += safeRecord.totalHoursDec;
+            annualTrips += safeRecord.tripCount;
+            annualTripCost += safeRecord.tripCost;
+            annualPromo += safeRecord.promo;
         }
         
         if (dStr === todayStr) {
-            todayData.income += r.totalIncome;
-            todayData.time += r.totalHoursDec;
-            todayData.trips += r.tripCount;
+            todayData.income += safeRecord.totalIncome;
+            todayData.time += safeRecord.totalHoursDec;
+            todayData.trips += safeRecord.tripCount;
             todayData.hasRecord = true;
-            todayData.record = r;
+            todayData.record = safeRecord;
         }
 
         const monthKey = dStr.substring(0, 7); 
@@ -1451,14 +1492,14 @@ export default function UberTrackV3_Cloud() {
                 totalIncome: 0, tripCost: 0, promo: 0, tips: 0, other: 0, tripCount: 0, totalHours: 0, records: []
             };
         }
-        mData[monthKey].totalIncome += r.totalIncome;
-        mData[monthKey].tripCost += r.tripCost;
-        mData[monthKey].promo += r.promo;
-        mData[monthKey].tips += r.tips;
-        mData[monthKey].other += r.other;
-        mData[monthKey].tripCount += r.tripCount;
-        mData[monthKey].totalHours += r.totalHoursDec;
-        mData[monthKey].records.push(r);
+        mData[monthKey].totalIncome += safeRecord.totalIncome;
+        mData[monthKey].tripCost += safeRecord.tripCost;
+        mData[monthKey].promo += safeRecord.promo;
+        mData[monthKey].tips += safeRecord.tips;
+        mData[monthKey].other += safeRecord.other;
+        mData[monthKey].tripCount += safeRecord.tripCount;
+        mData[monthKey].totalHours += safeRecord.totalHoursDec;
+        mData[monthKey].records.push(safeRecord);
     });
     
     const now = new Date();
@@ -1622,15 +1663,28 @@ export default function UberTrackV3_Cloud() {
     e.preventDefault();
     if (!user) return;
     setIsSyncing(true);
-    const income = (parseFloat(formData.tripCost)||0) + (parseFloat(formData.promo)||0) + (parseFloat(formData.tips)||0) + (parseFloat(formData.other)||0);
-    const hrs = (parseFloat(formData.hours)||0) + ((parseFloat(formData.minutes)||0)/60);
-    const trips = parseFloat(formData.tripCount)||0;
+    
+    // Parse values explicitly to prevent string concatenation
+    const tripCost = parseFloat(formData.tripCost) || 0;
+    const promo = parseFloat(formData.promo) || 0;
+    const tips = parseFloat(formData.tips) || 0;
+    const other = parseFloat(formData.other) || 0;
+    const hours = parseFloat(formData.hours) || 0;
+    const minutes = parseFloat(formData.minutes) || 0;
+    const tripCount = parseFloat(formData.tripCount) || 0;
+
+    const income = tripCost + promo + tips + other;
+    const hrs = hours + (minutes / 60);
     const id = editingRecord ? editingRecord.id : Date.now().toString();
     
     const newRecord = {
-      id, ...formData,
-      totalIncome: income, totalHoursDec: hrs,
-      hourlyWage: hrs > 0 ? income/hrs : 0, tripsPerHour: hrs > 0 ? trips/hrs : 0,
+      id, 
+      date: formData.date,
+      tripCost, promo, tips, other, tripCount,
+      totalIncome: income, 
+      totalHoursDec: hrs,
+      hourlyWage: hrs > 0 ? income/hrs : 0, 
+      tripsPerHour: hrs > 0 ? tripCount/hrs : 0,
       createdAt: editingRecord ? editingRecord.createdAt : new Date().toISOString()
     };
 
