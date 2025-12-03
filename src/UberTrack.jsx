@@ -3,7 +3,7 @@ import {
   Plus, Calendar, Settings, Bike, Trash2, Wallet, Activity, X, 
   CloudLightning, RefreshCw, DownloadCloud, ChevronLeft, ChevronRight, 
   BarChart3, PieChart, Clock, TrendingUp, ArrowLeft, Home, DollarSign, List, Grid3X3, LineChart, Sun, CloudSun, Palmtree, Hourglass, Edit2, AlertCircle,
-  LogOut, User, Lock, Mail, UploadCloud
+  LogOut, User, Lock, Mail, UploadCloud, Info, BookOpen, KeyRound
 } from 'lucide-react';
 
 // Firebase Imports
@@ -13,7 +13,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -133,7 +134,8 @@ const getSmartString = (item, keys) => {
 // 3. SUB-COMPONENTS
 // ==========================================
 
-const SimpleBarChart = ({ data, valueKey, color, valueFormatter, height = "h-40", showLabel = true }) => {
+// Modified SimpleBarChart to handle clicks
+const SimpleBarChart = ({ data, valueKey, color, valueFormatter, height = "h-40", showLabel = true, onBarClick }) => {
     const maxValue = Math.max(...data.map(d => d[valueKey] || 0), 1) * 1.15; 
     return (
         <div className={`relative ${height} flex items-end justify-between gap-0.5 sm:gap-2 px-0 sm:px-2 mt-4 overflow-hidden`}>
@@ -144,14 +146,18 @@ const SimpleBarChart = ({ data, valueKey, color, valueFormatter, height = "h-40"
                  const val = d[valueKey] || 0;
                  const barHeight = (val / (maxValue || 1)) * 100; 
                  return (
-                     <div key={i} className="flex flex-col items-center flex-1 min-w-0 h-full justify-end group relative z-10">
+                     <div 
+                        key={i} 
+                        className="flex flex-col items-center flex-1 min-w-0 h-full justify-end group relative z-10 cursor-pointer"
+                        onClick={() => onBarClick && onBarClick(d)}
+                     >
                          {val > 0 && showLabel && (
                              <span className="text-[8px] sm:text-[10px] font-bold text-gray-600 mb-1 transition-all transform group-hover:scale-110 whitespace-nowrap">
                                 {valueFormatter ? valueFormatter(val) : formatNumber(val)}
                              </span>
                          )}
                          <div 
-                            className={`w-full max-w-[24px] rounded-t-md opacity-90 ${color} transition-all duration-500 group-hover:opacity-100`} 
+                            className={`w-full max-w-[24px] rounded-t-md opacity-90 ${color} transition-all duration-200 group-hover:opacity-100 group-hover:scale-y-105 origin-bottom`} 
                             style={{ height: `${Math.max(barHeight, 1)}%` }}
                          ></div>
                          <span className="text-[8px] sm:text-[10px] text-gray-400 mt-1 font-medium truncate w-full text-center">{d.label}</span>
@@ -162,6 +168,7 @@ const SimpleBarChart = ({ data, valueKey, color, valueFormatter, height = "h-40"
     );
 };
 
+// ... ComboChart and MonthStatsCard remain largely the same ...
 const ComboChart = ({ title, data, barKey, lineKey, barColor, lineColor, barLabel, lineLabel, isCurrency = false, barTextColor, barValueFormatter }) => {
     const maxBar = Math.max(...data.map(d => d[barKey] || 0), 1) * 1.2; 
     const maxLine = Math.max(...data.map(d => d[lineKey] || 0), 1) * 1.2;
@@ -247,7 +254,6 @@ const MonthStatsCard = ({ data, workDays }) => {
                 <div className="flex gap-3 mt-2 text-xs font-medium text-emerald-50 border-b border-emerald-400/30 pb-3 mb-3">
                     <span>{tripCount} 單</span><span>•</span><span>{formatDecimal(totalHours)} h</span>
                 </div>
-                {/* Efficiency Metrics (淡綠色格子) */}
                 <div className="grid grid-cols-3 gap-2 text-center mb-3">
                     <div className="bg-emerald-50 rounded-lg p-2 backdrop-blur-sm text-gray-800">
                         <div className="text-[10px] text-gray-500 mb-0.5 font-bold">平均時薪</div>
@@ -262,7 +268,6 @@ const MonthStatsCard = ({ data, workDays }) => {
                         <div className="text-sm font-extrabold">${formatDecimal(avgGrossTripCost)}</div>
                     </div>
                 </div>
-                {/* Work Days Metrics (淡綠色格子) */}
                 <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-emerald-400/30">
                     <div className="bg-emerald-50 rounded-lg p-2 flex flex-col items-center justify-center text-gray-800">
                         <span className="text-[10px] text-gray-500 font-bold mb-0.5">整天</span>
@@ -317,51 +322,145 @@ const OverviewStats = memo(({ annualStats, todayStats, onEditToday }) => (
   </div>
 ));
 
-const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLength }) => (
-  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-white rounded-3xl border border-gray-200 p-4 sm:p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between">
-              <button onClick={() => handleWeekChange(-1)} className="p-2.5 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-full transition-colors"><ChevronLeft size={22} /></button>
-              <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-2 mb-1"><span className="text-sm text-gray-500 font-bold uppercase tracking-wide">第{weeklyStats.weekNumber}週收入</span></div>
-                  <div className="text-2xl font-black text-gray-900 flex items-center gap-2">{formatCurrency(weeklyStats.totalIncome)}</div>
-                  <span className="text-xs text-gray-400 mt-1 font-medium bg-gray-50 px-2 py-0.5 rounded">{formatDateShort(weeklyStats.startStr)} - {formatDateShort(weeklyStats.endStr)}</span>
+const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLength }) => {
+  const [selectedDayRecord, setSelectedDayRecord] = useState(null);
+
+  useEffect(() => {
+      setSelectedDayRecord(null);
+  }, [weeklyStats.startStr]);
+
+  const displayStats = useMemo(() => {
+      if (selectedDayRecord && selectedDayRecord.originalRecord) {
+          const r = selectedDayRecord.originalRecord;
+          const tripCost = r.tripCost || 0;
+          const promo = r.promo || 0;
+          const tripCount = r.tripCount || 0;
+          
+          return {
+              isDaily: true,
+              dateLabel: `${selectedDayRecord.date} (${selectedDayRecord.dayLabel})`,
+              breakdown: {
+                  tripCost: tripCost,
+                  promo: promo,
+                  tips: r.tips || 0,
+                  other: r.other || 0
+              },
+              totalHours: r.totalHoursDec || 0,
+              totalTrips: tripCount,
+              hourlyWage: r.hourlyWage || 0,
+              avgNetTripCost: tripCount > 0 ? tripCost / tripCount : 0,
+              avgGrossTripCost: tripCount > 0 ? (tripCost + promo) / tripCount : 0
+          };
+      } else if (selectedDayRecord && !selectedDayRecord.originalRecord) {
+          return {
+              isDaily: true,
+              dateLabel: `${selectedDayRecord.date} (${selectedDayRecord.dayLabel})`,
+              breakdown: { tripCost: 0, promo: 0, tips: 0, other: 0 },
+              totalHours: 0,
+              totalTrips: 0,
+              hourlyWage: 0,
+              avgNetTripCost: 0,
+              avgGrossTripCost: 0
+          };
+      } else {
+          return {
+              isDaily: false,
+              dateLabel: "全週合計",
+              breakdown: weeklyStats.breakdown,
+              totalHours: weeklyStats.totalHours,
+              totalTrips: weeklyStats.totalTrips,
+              hourlyWage: weeklyStats.weeklyHourlyWage,
+              avgNetTripCost: weeklyStats.avgNetTripCost,
+              avgGrossTripCost: weeklyStats.avgGrossTripCost
+          };
+      }
+  }, [selectedDayRecord, weeklyStats]);
+
+  const handleBarClick = (day) => {
+      if (selectedDayRecord && selectedDayRecord.date === day.date) {
+          setSelectedDayRecord(null); // 取消選擇
+      } else {
+          setSelectedDayRecord(day); // 選擇新日期
+      }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="bg-white rounded-3xl border border-gray-200 p-4 sm:p-6 shadow-sm space-y-6 relative">
+            <div className="flex items-center justify-between">
+                <button onClick={() => handleWeekChange(-1)} className="p-2.5 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-full transition-colors"><ChevronLeft size={22} /></button>
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-1"><span className="text-sm text-gray-500 font-bold uppercase tracking-wide">第{weeklyStats.weekNumber}週收入</span></div>
+                    <div className="text-2xl font-black text-gray-900 flex items-center gap-2">{formatCurrency(weeklyStats.totalIncome)}</div>
+                    <span className="text-xs text-gray-400 mt-1 font-medium bg-gray-50 px-2 py-0.5 rounded">{formatDateShort(weeklyStats.startStr)} - {formatDateShort(weeklyStats.endStr)}</span>
+                </div>
+                <button onClick={() => handleWeekChange(1)} className="p-2.5 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-full transition-colors"><ChevronRight size={22} /></button>
+            </div>
+            
+            <div className="relative">
+              <div className="h-44 flex items-end justify-between gap-1 sm:gap-2 px-0 sm:px-1 relative">
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-50">{[...Array(4)].map((_, i) => <div key={i} className="border-t border-gray-100 w-full h-px"></div>)}</div>
+                  {weeklyStats.dailyData.map((day, index) => {
+                      const heightPct = weeklyStats.maxDailyIncome > 0 ? (day.income / weeklyStats.maxDailyIncome) * 100 : 0;
+                      const isSelected = selectedDayRecord && selectedDayRecord.date === day.date;
+                      
+                      return (
+                          <div 
+                            key={index} 
+                            className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0 group z-10 h-full justify-end cursor-pointer"
+                            onClick={() => handleBarClick(day)}
+                          >
+                            <div className="relative w-full flex justify-end flex-col items-center h-[85%]">
+                                {day.income > 0 && <div className="mb-1 text-[10px] text-gray-600 font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1 hidden sm:block">${formatNumber(day.income)}</div>}
+                                <div 
+                                    className={`w-full sm:w-10 rounded-t-lg transition-all duration-300
+                                        ${isSelected ? 'ring-4 ring-emerald-200 translate-y-[-4px]' : ''}
+                                        ${day.isToday ? 'bg-emerald-500 shadow-md' : (day.income > 0 ? 'bg-emerald-400 group-hover:bg-emerald-300' : 'bg-gray-100 group-hover:bg-gray-200')}
+                                    `} 
+                                    style={{ height: `${Math.max(heightPct, 4)}%` }}
+                                ></div>
+                            </div>
+                            <span className={`text-[10px] sm:text-xs h-[15px] font-bold ${day.isToday || isSelected ? 'text-emerald-600' : 'text-gray-400'}`}>{day.dayLabel}</span>
+                          </div>
+                      )
+                  })}
               </div>
-              <button onClick={() => handleWeekChange(1)} className="p-2.5 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-full transition-colors"><ChevronRight size={22} /></button>
-          </div>
-          <div className="h-44 flex items-end justify-between gap-1 sm:gap-2 px-0 sm:px-1 relative">
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-50">{[...Array(4)].map((_, i) => <div key={i} className="border-t border-gray-100 w-full h-px"></div>)}</div>
-              {weeklyStats.dailyData.map((day, index) => {
-                  const heightPct = weeklyStats.maxDailyIncome > 0 ? (day.income / weeklyStats.maxDailyIncome) * 100 : 0;
-                  return (
-                      <div key={index} className="flex flex-col items-center gap-1 sm:gap-2 flex-1 min-w-0 group z-10 h-full justify-end">
-                        <div className="relative w-full flex justify-end flex-col items-center h-[85%]">
-                            {day.income > 0 && <div className="mb-1 text-[10px] text-gray-600 font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1 hidden sm:block">${formatNumber(day.income)}</div>}
-                            <div className={`w-full sm:w-10 rounded-t-lg transition-all duration-500 ${day.isToday ? 'bg-emerald-500 shadow-md ring-2 ring-emerald-200' : (day.income > 0 ? 'bg-emerald-400' : 'bg-gray-100')}`} style={{ height: `${Math.max(heightPct, 4)}%` }}></div>
-                        </div>
-                        <span className={`text-[10px] sm:text-xs h-[15px] font-bold ${day.isToday ? 'text-emerald-600' : 'text-gray-400'}`}>{day.dayLabel}</span>
-                      </div>
-                  )
-              })}
-          </div>
-          <div className="space-y-3 pt-2">
-              <h3 className="text-sm font-bold text-gray-900 ml-1">效率分析</h3>
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Clock size={12}/> 總工時</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{formatDecimal(weeklyStats.totalHours)}<span className="text-[10px] sm:text-xs font-normal text-gray-400 ml-0.5">h</span></div></div>
-                    <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Bike size={12}/> 總單量</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{weeklyStats.totalTrips}</div></div>
-                    <div className="bg-emerald-50 p-2 sm:p-3 rounded-xl text-center border border-emerald-100"><div className="text-[10px] sm:text-xs text-emerald-700 mb-1 flex items-center justify-center gap-1 font-medium"><Activity size={12}/> 當週時薪</div><div className="text-base sm:text-lg font-extrabold text-emerald-600">${formatDecimal(weeklyStats.weeklyHourlyWage)}</div></div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <div className="bg-white p-2 sm:p-3 rounded-xl flex justify-between items-center px-3 sm:px-4 border border-gray-200 shadow-sm"><div className="text-[10px] sm:text-xs text-gray-500 font-medium">每趟<br/>淨行程</div><div className="text-base sm:text-xl font-extrabold text-gray-900">${formatDecimal(weeklyStats.avgNetTripCost)}</div></div>
-                    <div className="bg-white p-2 sm:p-3 rounded-xl flex justify-between items-center px-3 sm:px-4 border border-gray-200 shadow-sm"><div className="text-[10px] sm:text-xs text-gray-500 flex flex-col font-medium"><span className="flex items-center gap-1 text-emerald-600"><TrendingUp size={12}/> 含獎勵</span><span>每趟平均</span></div><div className="text-base sm:text-xl font-extrabold text-emerald-600">${formatDecimal(weeklyStats.avgGrossTripCost)}</div></div>
-              </div>
-          </div>
-      </div>
-  </div>
-));
+            </div>
+
+            <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-end">
+                    <h3 className="text-sm font-bold text-gray-900 ml-1">收入明細</h3>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${displayStats.isDaily ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                        {displayStats.dateLabel}
+                    </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100 flex flex-col justify-center"><div className="text-xs text-gray-500 mb-1 font-bold">行程</div><div className="text-lg font-black text-gray-900">${formatCurrencyShort(displayStats.breakdown.tripCost)}</div></div>
+                    <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100 flex flex-col justify-center"><div className="text-xs text-emerald-600 mb-1 font-bold">獎勵</div><div className="text-lg font-black text-emerald-600">${formatCurrencyShort(displayStats.breakdown.promo)}</div></div>
+                    <div className="bg-yellow-50 rounded-xl p-3 text-center border border-yellow-100 flex flex-col justify-center"><div className="text-xs text-yellow-600 mb-1 font-bold">小費</div><div className="text-lg font-black text-yellow-600">${formatCurrencyShort(displayStats.breakdown.tips)}</div></div>
+                    <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100 flex flex-col justify-center"><div className="text-xs text-purple-600 mb-1 font-bold">其他</div><div className="text-lg font-black text-purple-600">${formatCurrencyShort(displayStats.breakdown.other)}</div></div>
+                </div>
+
+                <h3 className="text-sm font-bold text-gray-900 ml-1 mt-2">效率分析</h3>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Clock size={12}/> 總工時</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{formatDecimal(displayStats.totalHours)}<span className="text-[10px] sm:text-xs font-normal text-gray-400 ml-0.5">h</span></div></div>
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Bike size={12}/> 總單量</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{displayStats.totalTrips}</div></div>
+                      <div className="bg-emerald-50 p-2 sm:p-3 rounded-xl text-center border border-emerald-100"><div className="text-[10px] sm:text-xs text-emerald-700 mb-1 flex items-center justify-center gap-1 font-medium"><Activity size={12}/> {displayStats.isDaily ? '當日時薪' : '當週時薪'}</div><div className="text-base sm:text-lg font-extrabold text-emerald-600">${formatDecimal(displayStats.hourlyWage)}</div></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      <div className="bg-white p-2 sm:p-3 rounded-xl flex justify-between items-center px-3 sm:px-4 border border-gray-200 shadow-sm"><div className="text-[10px] sm:text-xs text-gray-500 font-medium">每趟<br/>淨行程</div><div className="text-base sm:text-xl font-extrabold text-gray-900">${formatDecimal(displayStats.avgNetTripCost)}</div></div>
+                      <div className="bg-white p-2 sm:p-3 rounded-xl flex justify-between items-center px-3 sm:px-4 border border-gray-200 shadow-sm"><div className="text-[10px] sm:text-xs text-gray-500 flex flex-col font-medium"><span className="flex items-center gap-1 text-emerald-600"><TrendingUp size={12}/> 含獎勵</span><span>每趟平均</span></div><div className="text-base sm:text-xl font-extrabold text-emerald-600">${formatDecimal(displayStats.avgGrossTripCost)}</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+});
 
 const MonthlyView = memo(({ 
-  selectedMonth, setSelectedMonth, currentYearView, setCurrentYearView, monthlyDataMap, currentSelectedMonthData, currentMonthStats, calculateWorkDays 
+  selectedMonth, setSelectedMonth, currentYearView, setCurrentYearView, monthlyDataMap, currentSelectedMonthData, currentMonthStats, calculateWorkDays,
+  handleEdit, handleDelete // Props for edit/delete
 }) => {
     const [isDetailListView, setIsDetailListView] = useState(false);
     
@@ -519,7 +618,11 @@ const MonthlyView = memo(({
                                         const hasRecord = !!item.record;
                                         const isHighIncome = hasRecord && item.record.totalIncome > 2000; 
                                         return (
-                                            <div key={`day-${item.day}`} className={`h-14 rounded-xl flex flex-col items-center justify-center relative border ${hasRecord ? (isHighIncome ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200') : 'border-transparent'}`}>
+                                            <div 
+                                                key={`day-${item.day}`} 
+                                                className={`h-14 rounded-xl flex flex-col items-center justify-center relative border ${hasRecord ? (isHighIncome ? 'bg-emerald-50 border-emerald-200 cursor-pointer hover:bg-emerald-100' : 'bg-gray-50 border-gray-200 cursor-pointer hover:bg-gray-100') : 'border-transparent'}`}
+                                                onClick={() => hasRecord && handleEdit(item.record)}
+                                            >
                                                 <div className={`text-[10px] font-bold absolute top-0.5 left-1.5 ${hasRecord ? 'text-gray-400' : 'text-gray-300'}`}>{item.day}</div>
                                                 {hasRecord && (
                                                     <div className="flex flex-col items-center justify-center w-full leading-none mt-1">
@@ -535,12 +638,27 @@ const MonthlyView = memo(({
                         ) : (
                             <div className="space-y-3">
                                 {sortedMonthRecords.map((record) => (
-                                    <div key={record.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex justify-between items-center">
+                                    <div 
+                                        key={record.id} 
+                                        className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex justify-between items-center cursor-pointer group hover:border-emerald-200 hover:shadow-md transition-all"
+                                        onClick={() => handleEdit(record)}
+                                    >
                                         <div className="flex items-center gap-3">
                                             <div className="bg-gray-100 text-gray-600 font-bold p-2 rounded-lg text-sm flex flex-col items-center min-w-[50px]"><span>{new Date(record.date).getDate()}日</span></div>
                                             <div><div className="text-lg font-black text-gray-900">{formatCurrency(record.totalIncome)}</div><div className="text-xs text-gray-500 font-medium">{record.tripCount}單 • {formatDuration(record.totalHoursDec)}</div></div>
                                         </div>
-                                        <div className="text-right"><div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full mb-1">時薪 ${formatDecimal(record.hourlyWage)}</div><div className="text-[10px] text-gray-400">均單 {formatDecimal(record.tripsPerHour)}</div></div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-right">
+                                                <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full mb-1">時薪 ${formatDecimal(record.hourlyWage)}</div>
+                                                <div className="text-[10px] text-gray-400">均單 {formatDecimal(record.tripsPerHour)}</div>
+                                            </div>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }} 
+                                                className="p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -741,41 +859,41 @@ const RecentRecordList = memo(({ recentStats, sheetUrl, fetchFromSheet, isLoadin
                   const { dateStr, record } = dayItem;
                   const dateObj = new Date(dateStr);
 
-                  if (record) {
-                      return (
-                        <div key={record.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm relative overflow-hidden group" onClick={() => handleEdit(record)}>
-                            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
-                            <div className="flex justify-between items-start mb-4 pl-3">
-                                <div>
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm mb-1 font-medium"><Calendar size={16} />{dateObj.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
-                                    <div className="text-2xl font-black text-gray-900">{formatCurrency(record.totalIncome)}</div>
-                                </div>
+                  // 4. 修正：若無資料，顯示 $0 的標準卡片，而非「未出勤」
+                  const displayRecord = record || { 
+                      totalIncome: 0, hourlyWage: 0, tripsPerHour: 0, totalHoursDec: 0, other: 0, id: null 
+                  };
+                  const isZero = !record;
+
+                  return (
+                    <div 
+                        key={dateStr} 
+                        className={`bg-white border border-gray-200 rounded-2xl p-5 shadow-sm relative overflow-hidden group ${isZero ? 'opacity-70' : ''}`} 
+                        onClick={() => record && handleEdit(record)} // Only edit if record exists
+                    >
+                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isZero ? 'bg-gray-300' : 'bg-emerald-500'}`}></div>
+                        <div className="flex justify-between items-start mb-4 pl-3">
+                            <div>
+                                <div className="flex items-center gap-2 text-gray-500 text-sm mb-1 font-medium"><Calendar size={16} />{dateObj.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
+                                <div className="text-2xl font-black text-gray-900">{formatCurrency(displayRecord.totalIncome)}</div>
+                            </div>
+                            {record && (
                                 <button onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }} className="text-gray-400 hover:text-red-500 transition-colors p-2 bg-gray-50 rounded-full"><Trash2 size={18} /></button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 pl-3">
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">時薪</div><div className="text-emerald-600 font-extrabold text-lg">${record.hourlyWage.toFixed(0)}</div></div>
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">每小時單量</div><div className="text-gray-900 font-extrabold text-lg">{formatDecimal(record.tripsPerHour)}</div></div>
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">工時</div><div className="text-gray-900 font-extrabold text-base leading-7">{formatDuration(record.totalHoursDec)}</div></div>
-                            </div>
-                            {/* Display Other Income if exists */}
-                            {record.other !== 0 && (
-                                <div className="mt-3 pt-2 border-t border-gray-100 text-right text-xs text-gray-400 font-medium">
-                                    其他調整: <span className={record.other > 0 ? "text-emerald-500" : "text-red-500"}>{record.other > 0 ? '+' : ''}{record.other}</span>
-                                </div>
                             )}
                         </div>
-                      );
-                  } else {
-                      return (
-                        <div key={dateStr} className="bg-gray-50 border border-gray-200 rounded-2xl p-5 shadow-sm opacity-60 flex justify-between items-center">
-                            <div>
-                                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1 font-medium"><Calendar size={16} />{dateObj.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
-                                <div className="text-xl font-bold text-gray-400">$0</div>
-                            </div>
-                            <span className="text-xs bg-gray-200 text-gray-500 px-3 py-1 rounded-full">未出勤</span>
+                        <div className="grid grid-cols-3 gap-2 pl-3">
+                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">時薪</div><div className={`font-extrabold text-lg ${isZero ? 'text-gray-400' : 'text-emerald-600'}`}>${displayRecord.hourlyWage.toFixed(0)}</div></div>
+                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">每小時單量</div><div className={`font-extrabold text-lg ${isZero ? 'text-gray-400' : 'text-gray-900'}`}>{formatDecimal(displayRecord.tripsPerHour)}</div></div>
+                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">工時</div><div className={`font-extrabold text-base leading-7 ${isZero ? 'text-gray-400' : 'text-gray-900'}`}>{formatDuration(displayRecord.totalHoursDec)}</div></div>
                         </div>
-                      );
-                  }
+                        {/* Display Other Income if exists */}
+                        {displayRecord.other !== 0 && (
+                            <div className="mt-3 pt-2 border-t border-gray-100 text-right text-xs text-gray-400 font-medium">
+                                其他調整: <span className={displayRecord.other > 0 ? "text-emerald-500" : "text-red-500"}>{displayRecord.other > 0 ? '+' : ''}{displayRecord.other}</span>
+                            </div>
+                        )}
+                    </div>
+                  );
               })}
           </div>
       )}
@@ -787,15 +905,18 @@ const RecentRecordList = memo(({ recentStats, sheetUrl, fetchFromSheet, isLoadin
 // ==========================================
 const LoginScreen = ({ onLoginSuccess }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
+  const [isResetMode, setIsResetMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMsg(null);
     try {
       if (isLoginMode) {
         await signInWithEmailAndPassword(auth, email, password);
@@ -808,6 +929,89 @@ const LoginScreen = ({ onLoginSuccess }) => {
       setLoading(false);
     }
   };
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    if(!email) {
+      setError("請輸入您的電子郵件");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMsg("重設信已寄出！請檢查信箱並依照指示重設密碼。");
+    } catch (err) {
+      setError(err.message.replace('Firebase:', '').trim());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isResetMode) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border border-gray-100">
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-500">
+              <KeyRound size={24} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">重設密碼</h1>
+            <p className="text-gray-500 text-sm">輸入您的 Email，我們將寄送重設連結給您</p>
+          </div>
+
+          <form onSubmit={handleReset} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase ml-1 mb-1 block">電子郵件</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-3.5 text-gray-400" size={20}/>
+                <input 
+                  type="email" 
+                  required 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-medium"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-500 text-sm p-3 rounded-xl flex items-start gap-2">
+                <AlertCircle size={16} className="mt-0.5 shrink-0"/>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="bg-green-50 text-green-600 text-sm p-3 rounded-xl flex items-start gap-2">
+                <CloudLightning size={16} className="mt-0.5 shrink-0"/>
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 mt-4"
+            >
+              {loading && <RefreshCw className="animate-spin" size={20}/>}
+              發送重設信
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => { setIsResetMode(false); setError(null); setSuccessMsg(null); }}
+              className="w-full text-gray-500 font-bold py-2 hover:text-gray-700 transition-colors text-sm"
+            >
+              返回登入
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -861,6 +1065,17 @@ const LoginScreen = ({ onLoginSuccess }) => {
                   onChange={(e) => setPassword(e.target.value)}
                />
              </div>
+             {isLoginMode && (
+                <div className="text-right mt-1">
+                  <button 
+                    type="button"
+                    onClick={() => { setIsResetMode(true); setError(null); }}
+                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                  >
+                    忘記密碼？
+                  </button>
+                </div>
+             )}
           </div>
 
           {error && (
@@ -907,7 +1122,123 @@ const MigrationModal = ({ onMigrate, loading }) => (
 );
 
 // ==========================================
-// 8. MAIN APPLICATION
+// 8. HELP MANUAL COMPONENT
+// ==========================================
+const UserManualModal = ({ onClose }) => (
+  <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="relative bg-white w-full max-w-lg h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+      
+      {/* Header */}
+      <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+          <BookOpen className="text-emerald-500" size={24}/> 
+          使用說明書
+        </h3>
+        <button onClick={onClose} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:text-gray-900 transition-colors">
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-8 text-gray-600 leading-relaxed">
+        
+        <section>
+          <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+            快速入門
+          </h4>
+          <ul className="space-y-3 text-sm">
+            <li className="flex gap-2">
+              <span className="font-bold text-gray-800 shrink-0">註冊與登入:</span>
+              <span>首次使用請點擊「註冊」，老朋友請直接「登入」。系統會自動記住您的登入狀態。</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="font-bold text-gray-800 shrink-0">舊資料搬家:</span>
+              <span>若您是舊版使用者，首次登入時系統會跳出提示，請務必點擊「開始雲端搬家」以保留歷史紀錄。</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+            首頁與即時戰況
+          </h4>
+          <p className="text-sm mb-3">登入後即進入首頁，這裡是您的戰情中心。</p>
+          <ul className="list-disc pl-5 space-y-2 text-sm">
+            <li><b className="text-gray-800">今日戰績</b>：顯示今天跑單金額。點擊筆型圖示可修改。</li>
+            <li><b className="text-gray-800">最近 7 天</b>：白色卡片可點擊修改或刪除；灰色卡片代表無紀錄。</li>
+            <li><b className="text-gray-800">功能切換</b>：快速切換週、月、年報表。</li>
+          </ul>
+        </section>
+
+        <section>
+          <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
+            記帳功能
+          </h4>
+          <p className="text-sm mb-3">點擊右下角 <b className="text-emerald-600">綠色「+」</b> 按鈕。</p>
+          <div className="bg-gray-50 p-4 rounded-xl text-sm space-y-2">
+             <div className="grid grid-cols-2 gap-2">
+               <div><span className="font-bold">行程</span>：基本車資</div>
+               <div><span className="font-bold">獎勵</span>：達標獎金</div>
+               <div><span className="font-bold">小費</span>：額外收入</div>
+               <div><span className="font-bold">其他</span>：補貼或扣款</div>
+             </div>
+             <p className="text-xs text-gray-400 mt-2 border-t border-gray-200 pt-2">💡 小撇步：同一天分早晚班跑，可分兩次記帳，系統會自動加總。</p>
+          </div>
+        </section>
+
+        <section>
+          <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">4</span>
+            數據分析
+          </h4>
+          <div className="space-y-4">
+            <div>
+              <h5 className="font-bold text-gray-800 mb-1">📊 週報表</h5>
+              <p className="text-sm">點擊長條圖可查看「該日」明細；再次點擊恢復全週總計。</p>
+            </div>
+            <div>
+              <h5 className="font-bold text-gray-800 mb-1">🗓️ 月報表</h5>
+              <p className="text-sm">點擊月曆格子可直接「修改」或「刪除」歷史紀錄（包含 7 天前的資料）。</p>
+            </div>
+            <div>
+              <h5 className="font-bold text-gray-800 mb-1">📈 年報表</h5>
+              <p className="text-sm">老闆視角，檢視整年度營收趨勢與總結算。</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">Q</span>
+            常見問題
+          </h4>
+          <div className="space-y-3 text-sm">
+            <div>
+              <p className="font-bold text-gray-800">Q: 為什麼 12/02 是灰色不能刪？</p>
+              <p>A: 灰色代表當天無資料，既然沒資料自然無法刪除。</p>
+            </div>
+            <div>
+              <p className="font-bold text-gray-800">Q: 換手機資料還在嗎？</p>
+              <p>A: 在！只要登入同一組帳號，資料自動同步。</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+      
+      {/* Footer */}
+      <div className="p-4 border-t border-gray-100 bg-gray-50/50 text-center">
+        <p className="text-xs text-emerald-600 font-bold">UberTrack Cloud v3.0</p>
+      </div>
+    </div>
+  </div>
+);
+
+// ==========================================
+// 9. MAIN APPLICATION
 // ==========================================
 
 export default function UberTrackV3_Cloud() {
@@ -926,6 +1257,7 @@ export default function UberTrackV3_Cloud() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false); // New state for Help Modal
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewMode, setViewMode] = useState('weekly');
   const [currentWeekBase, setCurrentWeekBase] = useState(new Date());
@@ -1199,6 +1531,10 @@ export default function UberTrackV3_Cloud() {
     const daysData = [];
     const dayLabels = ['一', '二', '三', '四', '五', '六', '日'];
     let totalIncome = 0, recordCount = 0, totalHours = 0, totalTrips = 0;
+    
+    // 1. & 2. 修正：正確計算週報表細項
+    let totalTripCost = 0, totalPromo = 0, totalTips = 0, totalOther = 0;
+
     for (let i = 0; i < 7; i++) {
         const d = new Date(startOfWeek);
         d.setDate(startOfWeek.getDate() + i);
@@ -1206,19 +1542,39 @@ export default function UberTrackV3_Cloud() {
         if (i === 6) endStr = dStr;
         const rec = stats.recordMap[dStr];
         const dayIncome = rec ? rec.totalIncome : 0;
-        daysData.push({ date: dStr, dayLabel: dayLabels[i], income: dayIncome, isToday: dStr === todayStr });
+        
+        daysData.push({ 
+            date: dStr, 
+            dayLabel: dayLabels[i], 
+            income: dayIncome, 
+            isToday: dStr === todayStr,
+            originalRecord: rec // 用於點擊後顯示明細
+        });
+
         if (rec) {
             totalIncome += dayIncome;
             totalHours += rec.totalHoursDec;
             totalTrips += rec.tripCount;
+            // 累加各項費用
+            totalTripCost += rec.tripCost || 0;
+            totalPromo += rec.promo || 0;
+            totalTips += rec.tips || 0;
+            totalOther += rec.other || 0;
             recordCount++; 
         }
     }
     const maxDailyIncome = Math.max(...daysData.map(d => d.income), 100);
     const weeklyHourlyWage = totalHours > 0 ? totalIncome / totalHours : 0;
-    const avgNetTripCost = 0; 
-    const avgGrossTripCost = 0; 
-    return { totalIncome, recordCount, startStr, endStr, weekNumber, dailyData: daysData, maxDailyIncome, totalHours, totalTrips, weeklyHourlyWage, avgNetTripCost, avgGrossTripCost };
+    
+    // 計算每趟平均
+    const avgNetTripCost = totalTrips > 0 ? totalTripCost / totalTrips : 0; 
+    const avgGrossTripCost = totalTrips > 0 ? (totalTripCost + totalPromo) / totalTrips : 0; 
+
+    return { 
+        totalIncome, recordCount, startStr, endStr, weekNumber, dailyData: daysData, maxDailyIncome, 
+        totalHours, totalTrips, weeklyHourlyWage, avgNetTripCost, avgGrossTripCost,
+        breakdown: { tripCost: totalTripCost, promo: totalPromo, tips: totalTips, other: totalOther }
+    };
   }, [stats.recordMap, currentWeekBase]);
 
   const recentStats = useMemo(() => {
@@ -1319,6 +1675,9 @@ export default function UberTrackV3_Cloud() {
       {/* Migration Modal */}
       {showMigration && <MigrationModal onMigrate={handleMigration} loading={isMigrating} />}
 
+      {/* Help Modal - Add this */}
+      {isHelpOpen && <UserManualModal onClose={() => setIsHelpOpen(false)} />}
+
       <div className="bg-white px-6 pt-8 pb-10 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -1329,6 +1688,8 @@ export default function UberTrackV3_Cloud() {
           </div>
           <div className="flex gap-2">
             <button onClick={goHome} className="p-2.5 rounded-full border border-gray-200 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 transition-all"><Home className="w-6 h-6" /></button>
+            {/* Help Button - Add this */}
+            <button onClick={() => setIsHelpOpen(true)} className="p-2.5 rounded-full border border-gray-200 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 transition-all"><BookOpen className="w-6 h-6" /></button>
             <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 rounded-full border bg-gray-100 border-gray-200 text-gray-500 hover:text-gray-900"><User className="w-6 h-6" /></button>
           </div>
         </div>
@@ -1358,6 +1719,7 @@ export default function UberTrackV3_Cloud() {
                 currentYearView={currentYearView} setCurrentYearView={setCurrentYearView}
                 monthlyDataMap={stats.monthlyDataMap} currentSelectedMonthData={currentSelectedMonthData}
                 currentMonthStats={currentMonthStats} calculateWorkDays={calculateWorkDays}
+                handleEdit={handleEdit} handleDelete={handleDelete}
             />
         )}
         {viewMode === 'annual' && (
