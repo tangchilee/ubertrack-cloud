@@ -3,7 +3,7 @@ import {
   Plus, Calendar, Settings, Bike, Trash2, Wallet, Activity, X, 
   CloudLightning, RefreshCw, DownloadCloud, ChevronLeft, ChevronRight, 
   BarChart3, PieChart, Clock, TrendingUp, ArrowLeft, Home, DollarSign, List, Grid3X3, LineChart, Sun, CloudSun, Palmtree, Hourglass, Edit2, AlertCircle,
-  LogOut, User, Lock, Mail, UploadCloud, Info, BookOpen, KeyRound
+  LogOut, User, Lock, Mail, UploadCloud, Info, BookOpen, KeyRound, ShieldCheck
 } from 'lucide-react';
 
 // Firebase Imports
@@ -25,12 +25,16 @@ import {
   setDoc, 
   deleteDoc, 
   writeBatch,
-  enableIndexedDbPersistence // 1. 新增引入這個功能
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
 
 // ==========================================
-// 1. CONFIGURATION (FIREBASE)
+// 1. CONFIGURATION (FIREBASE & INVITE CODE)
 // ==========================================
+
+// ★★★ 請在此設定您的邀請碼 (只有知道這組號碼的人才能註冊) ★★★
+const REQUIRED_INVITE_CODE = "VIP888"; 
+
 const firebaseConfig = {
   apiKey: "AIzaSyBSf1K4cQU8q_HRsgKd8eliHxPJtUJmvkk",
   authDomain: "ubertrack-app.firebaseapp.com",
@@ -46,15 +50,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 2. 啟用離線快取 (節流模式)
-// 這會讓瀏覽器快取資料，下次開啟時不需重新下載全部，大幅節省讀取次數
+// 啟用離線快取 (節流模式)
 enableIndexedDbPersistence(db)
   .catch((err) => {
       if (err.code == 'failed-precondition') {
-          // 如果使用者同時開了多個分頁，只有第一個分頁能使用快取
           console.log("Persistence failed: Multiple tabs open");
       } else if (err.code == 'unimplemented') {
-          // 瀏覽器不支援 (極少見)
           console.log("Persistence failed: Browser not supported");
       }
   });
@@ -940,6 +941,7 @@ const LoginScreen = ({ onLoginSuccess }) => {
   const [isResetMode, setIsResetMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState(''); // State for invite code
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -949,6 +951,16 @@ const LoginScreen = ({ onLoginSuccess }) => {
     setLoading(true);
     setError(null);
     setSuccessMsg(null);
+
+    // 邀請碼檢查邏輯
+    if (!isLoginMode && !isResetMode) {
+        if (inviteCode !== REQUIRED_INVITE_CODE) {
+            setError("邀請碼錯誤，您無法註冊帳號！");
+            setLoading(false);
+            return;
+        }
+    }
+
     try {
       if (isLoginMode) {
         await signInWithEmailAndPassword(auth, email, password);
@@ -1109,6 +1121,24 @@ const LoginScreen = ({ onLoginSuccess }) => {
                 </div>
              )}
           </div>
+
+          {/* 邀請碼欄位 - 只有在註冊模式顯示 */}
+          {!isLoginMode && (
+            <div className="animate-in slide-in-from-top duration-300">
+                <label className="text-xs font-bold text-emerald-600 uppercase ml-1 mb-1 block">邀請碼 (必填)</label>
+                <div className="relative">
+                <ShieldCheck className="absolute left-4 top-3.5 text-emerald-500" size={20}/>
+                <input 
+                    type="text" 
+                    required 
+                    className="w-full bg-emerald-50 border border-emerald-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-bold text-emerald-700 placeholder-emerald-300"
+                    placeholder="請輸入邀請碼"
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value)}
+                />
+                </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 text-red-500 text-sm p-3 rounded-xl flex items-start gap-2">
