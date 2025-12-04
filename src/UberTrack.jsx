@@ -815,6 +815,27 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
              remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
              if (remainingDays < 0) remainingDays = 0;
         }
+        
+        // 修正邏輯：遍歷全年每一天，若當日無資料則自動視為休假 (offDays)
+        // 起始日：1月1日
+        // 結束日：如果是今年，則算到今天；如果是過去年，算到12/31
+        let targetDate = new Date(currentYearView, 11, 31);
+        if (currentYearView === now.getFullYear()) {
+            targetDate = new Date(); 
+        }
+
+        const currentDate = new Date(currentYearView, 0, 1);
+        
+        while (currentDate <= targetDate) {
+             const dStr = getLocalDateString(currentDate);
+             const h = dailyHours[dStr] || 0;
+             
+             if (h <= 1) offDays++;
+             else if (h < 4) halfDays++;
+             else fullDays++;
+
+             currentDate.setDate(currentDate.getDate() + 1);
+        }
 
         return { tripCost, promo, tips, other, hours, fullDays, halfDays, offDays, remainingDays };
     }, [monthlyDataMap, currentYearView]);
