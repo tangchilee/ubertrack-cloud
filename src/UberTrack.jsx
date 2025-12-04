@@ -781,13 +781,29 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
             dailyHours[dStr] = (dailyHours[dStr] || 0) + r.totalHoursDec;
         });
 
-        Object.values(dailyHours).forEach(h => {
-            if (h <= 1) offDays++;
-            else if (h < 4) halfDays++;
-            else fullDays++;
-        });
-
+        // NEW LOGIC for work days calculation
         const now = new Date();
+        let targetDate = new Date(currentYearView, 11, 31);
+        
+        if (currentYearView === now.getFullYear()) {
+            targetDate = new Date(); 
+        } else if (currentYearView > now.getFullYear()) {
+             targetDate = new Date(currentYearView, 0, 0); 
+        }
+
+        const currentDate = new Date(currentYearView, 0, 1);
+        
+        while (currentDate <= targetDate) {
+             const dStr = getLocalDateString(currentDate);
+             const h = dailyHours[dStr] || 0;
+             
+             if (h <= 1) offDays++;
+             else if (h < 4) halfDays++;
+             else fullDays++;
+
+             currentDate.setDate(currentDate.getDate() + 1);
+        }
+
         let remainingDays = 0;
         if (currentYearView === now.getFullYear()) {
              const endOfYear = new Date(currentYearView, 11, 31);
