@@ -3,7 +3,7 @@ import {
   Plus, Calendar, Settings, Bike, Trash2, Wallet, Activity, X, 
   CloudLightning, RefreshCw, DownloadCloud, ChevronLeft, ChevronRight, 
   BarChart3, PieChart, Clock, TrendingUp, ArrowLeft, Home, DollarSign, List, Grid3X3, LineChart, Sun, CloudSun, Palmtree, Hourglass, Edit2, AlertCircle,
-  LogOut, User, Lock, Mail, UploadCloud, Info, BookOpen, KeyRound, ShieldCheck
+  LogOut, User, Lock, Mail, UploadCloud, Info, BookOpen, KeyRound, ShieldCheck, Smartphone, Eye
 } from 'lucide-react';
 
 // Firebase Imports
@@ -33,7 +33,7 @@ import {
 // ==========================================
 
 // ★★★ 請在此設定您的邀請碼 (只有知道這組號碼的人才能註冊) ★★★
-const REQUIRED_INVITE_CODE = "VIP888"; 
+const REQUIRED_INVITE_CODE = "UBER2025"; 
 
 const firebaseConfig = {
   apiKey: "AIzaSyBSf1K4cQU8q_HRsgKd8eliHxPJtUJmvkk",
@@ -143,6 +143,41 @@ const getSmartString = (item, keys) => {
         }
     }
     return "";
+};
+
+// MOCK DATA GENERATOR (FOR DEMO MODE)
+const generateMockData = () => {
+    const records = [];
+    const today = new Date();
+    // Generate data for the last 45 days to populate charts
+    for (let i = 0; i < 45; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        
+        // Skip some days to simulate realism (e.g. weekends or rest days)
+        if (Math.random() > 0.8) continue; 
+
+        const tripCount = Math.floor(Math.random() * 15) + 5; // 5-20 trips
+        const hours = Math.floor(Math.random() * 6) + 2; // 2-8 hours
+        const tripCost = tripCount * (Math.floor(Math.random() * 40) + 40); // 40-80 per trip
+        const promo = Math.floor(Math.random() * 200);
+        const tips = Math.floor(Math.random() * 100);
+        const other = 0;
+        
+        const income = tripCost + promo + tips + other;
+        
+        records.push({
+            id: `mock-${i}`,
+            date: getLocalDateString(date),
+            tripCost, promo, tips, other, tripCount,
+            totalHoursDec: hours + (Math.random() * 0.9),
+            totalIncome: income,
+            hourlyWage: income / hours,
+            tripsPerHour: tripCount / hours,
+            createdAt: new Date().toISOString()
+        });
+    }
+    return records;
 };
 
 // ==========================================
@@ -936,7 +971,7 @@ const RecentRecordList = memo(({ recentStats, sheetUrl, fetchFromSheet, isLoadin
 // ==========================================
 // 6. LOGIN COMPONENT
 // ==========================================
-const LoginScreen = ({ onLoginSuccess }) => {
+const LoginScreen = ({ onLoginSuccess, onDemoLogin }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [isResetMode, setIsResetMode] = useState(false);
   const [email, setEmail] = useState('');
@@ -1156,6 +1191,18 @@ const LoginScreen = ({ onLoginSuccess }) => {
             {isLoginMode ? '立即登入' : '建立帳號'}
           </button>
         </form>
+        
+        {/* Demo Mode Button */}
+        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+           <button 
+             onClick={onDemoLogin}
+             className="text-sm text-gray-500 hover:text-emerald-600 font-bold flex items-center justify-center gap-1 mx-auto transition-colors"
+           >
+             <Eye size={16}/>
+             免註冊試用 (Demo Mode)
+           </button>
+        </div>
+
       </div>
     </div>
   );
@@ -1203,6 +1250,34 @@ const UserManualModal = ({ onClose }) => (
 
       {/* Content - Scrollable */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 text-gray-600 leading-relaxed">
+
+        {/* New Section: Install to Phone */}
+        <section>
+          <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-6 h-6 rounded-full flex items-center justify-center text-xs"><Smartphone size={14}/></span>
+            安裝到手機 (App 體驗)
+          </h4>
+          <p className="text-sm mb-3">這是一個網頁應用程式 (Web App)，但您可以將它安裝到手機桌面，享受全螢幕體驗！</p>
+          
+          <div className="bg-gray-50 p-4 rounded-xl text-sm space-y-4 border border-gray-100">
+             <div>
+               <h5 className="font-bold text-gray-800 mb-1">🍎 iPhone / iPad (iOS)</h5>
+               <ol className="list-decimal pl-5 space-y-1 text-gray-600">
+                 <li>使用 <b>Safari</b> 瀏覽器打開本網頁</li>
+                 <li>點擊下方的 <b>「分享」</b> 按鈕 (方塊向上箭頭)</li>
+                 <li>滑動選單，點擊 <b>「加入主畫面」</b></li>
+               </ol>
+             </div>
+             <div className="border-t border-gray-200 pt-3">
+               <h5 className="font-bold text-gray-800 mb-1">🤖 Android (Chrome)</h5>
+               <ol className="list-decimal pl-5 space-y-1 text-gray-600">
+                 <li>使用 <b>Chrome</b> 瀏覽器打開本網頁</li>
+                 <li>點擊右上角的 <b>「選單」</b> 按鈕 (三個點)</li>
+                 <li>點擊 <b>「安裝應用程式」</b> 或 <b>「加入主畫面」</b></li>
+               </ol>
+             </div>
+          </div>
+        </section>
         
         <section>
           <h4 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -1212,7 +1287,7 @@ const UserManualModal = ({ onClose }) => (
           <ul className="space-y-3 text-sm">
             <li className="flex gap-2">
               <span className="font-bold text-gray-800 shrink-0">註冊與登入:</span>
-              <span>首次使用請點擊「註冊」，老朋友請直接「登入」。系統會自動記住您的登入狀態。</span>
+              <span>首次使用請點擊「註冊」，並輸入邀請碼。系統會自動記住您的登入狀態。</span>
             </li>
             <li className="flex gap-2">
               <span className="font-bold text-gray-800 shrink-0">舊資料搬家:</span>
@@ -1306,6 +1381,7 @@ const UserManualModal = ({ onClose }) => (
 export default function UberTrackV3_Cloud() {
   const [isStyleLoaded, setIsStyleLoaded] = useState(false);
   const [user, setUser] = useState(null);
+  const [isDemoMode, setIsDemoMode] = useState(false); // Demo Mode State
   const [authLoading, setAuthLoading] = useState(true);
   const [records, setRecords] = useState([]);
   
@@ -1352,6 +1428,9 @@ export default function UberTrackV3_Cloud() {
   // Auth Listener & Data Sync
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      // If in demo mode, ignore auth changes
+      if (isDemoMode) return;
+
       setUser(currentUser);
       setAuthLoading(false);
 
@@ -1376,10 +1455,24 @@ export default function UberTrackV3_Cloud() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [isDemoMode]);
+
+  // Enter Demo Mode
+  const handleDemoLogin = () => {
+      setAuthLoading(true);
+      setTimeout(() => {
+          setIsDemoMode(true);
+          setUser({ email: 'guest@demo.com', uid: 'demo-user' });
+          const mockData = generateMockData();
+          mockData.sort((a, b) => (a.date < b.date ? 1 : -1));
+          setRecords(mockData);
+          setAuthLoading(false);
+      }, 800); // Simulate loading
+  };
 
   // Migration Logic
   const handleMigration = async () => {
+     if (isDemoMode) return;
      setIsMigrating(true);
      try {
          const localData = JSON.parse(localStorage.getItem('uber_records') || "[]");
@@ -1405,11 +1498,22 @@ export default function UberTrackV3_Cloud() {
      }
   };
 
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => {
+      if (isDemoMode) {
+          setIsDemoMode(false);
+          setUser(null);
+          setRecords([]);
+      } else {
+          signOut(auth);
+      }
+  };
 
   // Firestore Sheet Import Logic
   const fetchFromSheet = useCallback(async () => {
-    if (!sheetUrl || !user) return;
+    if (!sheetUrl || !user || isDemoMode) {
+        if (isDemoMode) alert("試用模式無法匯入資料");
+        return;
+    }
     setIsSyncing(true);
     try {
       const response = await fetch(sheetUrl);
@@ -1455,7 +1559,7 @@ export default function UberTrackV3_Cloud() {
         alert("匯入失敗: " + e.message);
     } 
     finally { setIsSyncing(false); }
-  }, [sheetUrl, user]);
+  }, [sheetUrl, user, isDemoMode]);
 
 
   // Stats Calculation (Same logic, relying on 'records' state)
@@ -1705,7 +1809,7 @@ export default function UberTrackV3_Cloud() {
   // Firestore Write
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user && !isDemoMode) return;
     setIsSyncing(true);
     
     // Parse values explicitly to prevent string concatenation
@@ -1733,7 +1837,21 @@ export default function UberTrackV3_Cloud() {
     };
 
     try {
-        await setDoc(doc(db, 'users', user.uid, 'records', id.toString()), newRecord);
+        if (isDemoMode) {
+            // Demo Mode: Local State Update Only
+            if (editingRecord) {
+                setRecords(prev => {
+                    const filtered = prev.filter(r => r.id !== editingRecord.id);
+                    return [...filtered, newRecord].sort((a, b) => (a.date < b.date ? 1 : -1));
+                });
+                setEditingRecord(null);
+            } else {
+                setRecords(prev => [newRecord, ...prev].sort((a, b) => (a.date < b.date ? 1 : -1)));
+            }
+        } else {
+            // Real Mode: Firebase Write
+            await setDoc(doc(db, 'users', user.uid, 'records', id.toString()), newRecord);
+        }
         setIsModalOpen(false);
         setFormData({ date: getLocalDateString(new Date()), tripCost: '', promo: '', tips: '', other: '', hours: '', minutes: '', tripCount: '' });
     } catch (e) {
@@ -1744,9 +1862,13 @@ export default function UberTrackV3_Cloud() {
   };
 
   const handleDelete = async (id) => {
-      if (!user || !window.confirm('確定刪除？')) return;
+      if ((!user && !isDemoMode) || !window.confirm('確定刪除？')) return;
       try {
-          await deleteDoc(doc(db, 'users', user.uid, 'records', id.toString()));
+          if (isDemoMode) {
+             setRecords(prev => prev.filter(r => r.id !== id));
+          } else {
+             await deleteDoc(doc(db, 'users', user.uid, 'records', id.toString()));
+          }
       } catch (e) {
           alert("刪除失敗");
       }
@@ -1763,8 +1885,8 @@ export default function UberTrackV3_Cloud() {
   }
 
   // Not logged in -> Show Login Screen
-  if (!user) {
-      return <LoginScreen />;
+  if (!user && !isDemoMode) {
+      return <LoginScreen onDemoLogin={handleDemoLogin} />;
   }
 
   // Logged in -> Show Dashboard
@@ -1781,7 +1903,8 @@ export default function UberTrackV3_Cloud() {
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Uber<span className="text-emerald-500">Track</span></h1>
             <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> 雲端連線中
+                <div className={`w-2 h-2 rounded-full animate-pulse ${isDemoMode ? 'bg-orange-400' : 'bg-green-500'}`}></div> 
+                {isDemoMode ? '試用模式 (不存檔)' : '雲端連線中'}
             </div>
           </div>
           <div className="flex gap-2">
@@ -1839,21 +1962,23 @@ export default function UberTrackV3_Cloud() {
           <div className="relative bg-white w-full max-w-sm rounded-3xl border border-gray-100 p-6 shadow-2xl overflow-hidden">
              <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-bold text-gray-500">
-                    {user.email[0].toUpperCase()}
+                    {user.email ? user.email[0].toUpperCase() : 'G'}
                 </div>
                 <h3 className="font-bold text-gray-900">{user.email}</h3>
-                <p className="text-xs text-gray-400">UberTrack Cloud Member</p>
+                <p className="text-xs text-gray-400">UberTrack Cloud {isDemoMode ? 'Guest' : 'Member'}</p>
              </div>
 
              <div className="space-y-3">
-                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <h4 className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1"><CloudLightning size={12}/> 舊版資料匯入工具</h4>
-                    <p className="text-[10px] text-gray-400 mb-3">若您有舊版的 Google Apps Script 網址，可在此貼上並將資料匯入雲端。</p>
-                    <input type="text" placeholder="https://script.google.com/..." value={sheetUrl} onChange={(e) => { setSheetUrl(e.target.value); localStorage.setItem('uber_sheet_url', e.target.value); }} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs mb-2" />
-                    <button onClick={fetchFromSheet} disabled={isSyncing || !sheetUrl} className="w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-lg text-xs hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">{isSyncing ? <RefreshCw className="animate-spin" size={12}/> : <DownloadCloud size={12}/>} 開始匯入</button>
-                 </div>
+                 {!isDemoMode && (
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <h4 className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1"><CloudLightning size={12}/> 舊版資料匯入工具</h4>
+                        <p className="text-[10px] text-gray-400 mb-3">若您有舊版的 Google Apps Script 網址，可在此貼上並將資料匯入雲端。</p>
+                        <input type="text" placeholder="https://script.google.com/..." value={sheetUrl} onChange={(e) => { setSheetUrl(e.target.value); localStorage.setItem('uber_sheet_url', e.target.value); }} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs mb-2" />
+                        <button onClick={fetchFromSheet} disabled={isSyncing || !sheetUrl} className="w-full bg-blue-50 text-blue-600 font-bold py-2 rounded-lg text-xs hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">{isSyncing ? <RefreshCw className="animate-spin" size={12}/> : <DownloadCloud size={12}/>} 開始匯入</button>
+                    </div>
+                 )}
 
-                 <button onClick={handleLogout} className="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"><LogOut size={16}/> 登出帳號</button>
+                 <button onClick={handleLogout} className="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"><LogOut size={16}/> {isDemoMode ? '結束試用' : '登出帳號'}</button>
              </div>
              <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600"><X size={20}/></button>
           </div>
@@ -1870,10 +1995,10 @@ export default function UberTrackV3_Cloud() {
               <div className="space-y-2"><label className="text-sm font-bold text-gray-500 uppercase tracking-wider ml-1">日期</label><div className="relative"><input required type="date" name="date" value={formData.date} onChange={(e) => setFormData(p => ({...p, date: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all" /><Calendar className="absolute right-5 top-4.5 text-gray-400 pointer-events-none" size={24} /></div></div>
               <div className="space-y-2"><label className="text-sm font-bold text-gray-500 uppercase tracking-wider ml-1">收入詳情</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="relative"><input type="number" placeholder="0" name="tripCost" value={formData.tripCost} onChange={(e) => setFormData(p => ({...p, tripCost: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-base font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">行程</span></div>
-                  <div className="relative"><input type="number" placeholder="0" name="promo" value={formData.promo} onChange={(e) => setFormData(p => ({...p, promo: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-base font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">獎勵</span></div>
-                  <div className="relative"><input type="number" placeholder="0" name="tips" value={formData.tips} onChange={(e) => setFormData(p => ({...p, tips: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-base font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">小費</span></div>
-                  <div className="relative"><input type="number" placeholder="0" name="other" value={formData.other} onChange={(e) => setFormData(p => ({...p, other: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-base font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">其他</span></div>
+                  <div className="relative"><input type="number" placeholder="0" name="tripCost" value={formData.tripCost} onChange={(e) => setFormData(p => ({...p, tripCost: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">淨行程費用</span></div>
+                  <div className="relative"><input type="number" placeholder="0" name="promo" value={formData.promo} onChange={(e) => setFormData(p => ({...p, promo: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">額外獎勵</span></div>
+                  <div className="relative"><input type="number" placeholder="0" name="tips" value={formData.tips} onChange={(e) => setFormData(p => ({...p, tips: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">小費</span></div>
+                  <div className="relative"><input type="number" placeholder="0" name="other" value={formData.other} onChange={(e) => setFormData(p => ({...p, other: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-2 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute text-[10px] text-gray-400 top-2 right-3 font-bold">其他</span></div>
                 </div>
               </div>
               <div className="space-y-2"><label className="text-sm font-bold text-gray-500 uppercase tracking-wider ml-1">工時</label><div className="grid grid-cols-2 gap-3"><div className="relative"><input required type="number" placeholder="0" name="hours" value={formData.hours} onChange={(e) => setFormData(p => ({...p, hours: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute right-5 top-5 text-gray-400 text-sm font-bold">時</span></div><div className="relative"><input type="number" placeholder="0" name="minutes" max="59" value={formData.minutes} onChange={(e) => setFormData(p => ({...p, minutes: e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-gray-900 text-lg font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" /><span className="absolute right-5 top-5 text-gray-400 text-sm font-bold">分</span></div></div></div>
