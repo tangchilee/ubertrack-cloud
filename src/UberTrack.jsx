@@ -392,6 +392,11 @@ const OverviewStats = memo(({ annualStats, todayStats, onEditToday }) => (
 
 const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLength }) => {
   const [selectedDayRecord, setSelectedDayRecord] = useState(null);
+  
+  // Track if it's mobile to adjust logic (using a simple width check or CSS classes)
+  // But here we use CSS classes for rendering logic.
+  // We need a state to track if something is selected.
+  const hasSelection = !!selectedDayRecord;
 
   useEffect(() => {
       setSelectedDayRecord(null);
@@ -472,6 +477,11 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
                       const heightPct = weeklyStats.maxDailyIncome > 0 ? (day.income / weeklyStats.maxDailyIncome) * 100 : 0;
                       const isSelected = selectedDayRecord && selectedDayRecord.date === day.date;
                       
+                      // Mobile Logic:
+                      // If NOT selected anything: Show short label for ALL (k format)
+                      // If selected: Show full label ONLY for selected, hide others.
+                      const showMobileLabel = !hasSelection || isSelected;
+
                       return (
                           <div 
                             key={index} 
@@ -479,7 +489,23 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
                             onClick={() => handleBarClick(day)}
                           >
                             <div className="relative w-full flex justify-end flex-col items-center h-[85%]">
-                                {day.income > 0 && <div className="mb-1 text-[10px] text-gray-600 font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1 hidden sm:block">${formatNumber(day.income)}</div>}
+                                {day.income > 0 && (
+                                    <>
+                                        {/* Desktop: Always show full number */}
+                                        <div className="hidden sm:block mb-1 text-[10px] text-gray-600 font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1">
+                                            ${formatNumber(day.income)}
+                                        </div>
+
+                                        {/* Mobile: Dynamic Logic */}
+                                        {/* Logic: Show if (No Selection OR Is Selected) */}
+                                        {/* Format: If Selected -> Full Number, If Default -> Short (k) */}
+                                        <div className={`sm:hidden mb-1 text-[10px] font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1 transition-opacity duration-200 ${showMobileLabel ? 'opacity-100' : 'opacity-0'}`}>
+                                            {isSelected 
+                                                ? `$${formatNumber(day.income)}` 
+                                                : (day.income >= 1000 ? `$${(day.income/1000).toFixed(1)}k` : `$${day.income}`)}
+                                        </div>
+                                    </>
+                                )}
                                 <div 
                                     className={`w-full sm:w-10 rounded-t-lg transition-all duration-300
                                         ${isSelected ? 'ring-4 ring-emerald-200 translate-y-[-4px]' : ''}
@@ -781,29 +807,7 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
             dailyHours[dStr] = (dailyHours[dStr] || 0) + r.totalHoursDec;
         });
 
-        // NEW LOGIC for work days calculation
         const now = new Date();
-        let targetDate = new Date(currentYearView, 11, 31);
-        
-        if (currentYearView === now.getFullYear()) {
-            targetDate = new Date(); 
-        } else if (currentYearView > now.getFullYear()) {
-             targetDate = new Date(currentYearView, 0, 0); 
-        }
-
-        const currentDate = new Date(currentYearView, 0, 1);
-        
-        while (currentDate <= targetDate) {
-             const dStr = getLocalDateString(currentDate);
-             const h = dailyHours[dStr] || 0;
-             
-             if (h <= 1) offDays++;
-             else if (h < 4) halfDays++;
-             else fullDays++;
-
-             currentDate.setDate(currentDate.getDate() + 1);
-        }
-
         let remainingDays = 0;
         if (currentYearView === now.getFullYear()) {
              const endOfYear = new Date(currentYearView, 11, 31);
