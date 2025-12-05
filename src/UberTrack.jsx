@@ -295,6 +295,9 @@ const MonthStatsCard = ({ data, workDays }) => {
     if (!data) return null;
     const { totalIncome, tripCount, totalHours, hourlyWage, avgNetTripCost, avgGrossTripCost, month, tripCost, promo, tips, other } = data;
     
+    // 計算每小時單量 (Total Trips / Total Hours)
+    const tripsPerHour = totalHours > 0 ? tripCount / totalHours : 0;
+
     return (
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-3xl p-5 shadow-md text-white mb-2 relative overflow-hidden">
              {/* Decorative Icon */}
@@ -304,10 +307,8 @@ const MonthStatsCard = ({ data, workDays }) => {
                 {/* Header */}
                 <div className="flex flex-col items-center">
                      <div className="text-emerald-100 text-xs font-bold mb-1 uppercase tracking-wider flex items-center gap-1"><Calendar size={12} /> 本月 ({month}月) 累積收入</div>
-                     <div className="text-3xl font-black tracking-tight">{formatCurrency(totalIncome)}</div>
-                     <div className="flex gap-3 mt-2 text-xs font-medium text-emerald-50 border-b border-emerald-400/30 pb-3 mb-3">
-                        <span>{tripCount} 單</span><span>•</span><span>{formatDecimal(totalHours)} h</span>
-                    </div>
+                     <div className="text-3xl font-black tracking-tight mb-4">{formatCurrency(totalIncome)}</div>
+                     {/* 移除單量與時間顯示 */}
                 </div>
 
                 {/* Content */}
@@ -321,16 +322,17 @@ const MonthStatsCard = ({ data, workDays }) => {
                         <div className="bg-emerald-50/90 backdrop-blur-sm rounded-xl p-3 text-center border border-emerald-100 flex flex-col justify-center"><div className="text-xs text-purple-600 mb-1 font-bold">其他</div><div className="text-lg font-black text-purple-600">${formatCurrencyShort(other)}</div></div>
                     </div>
 
-                    {/* Efficiency */}
+                    {/* Efficiency - Updated Layout */}
                     <h3 className="text-sm font-bold text-emerald-50 ml-1 mt-2">效率分析</h3>
                     <div className="grid grid-cols-3 gap-2">
                           <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-gray-500 mb-0.5 font-bold">總工時</div><div className="text-base font-extrabold text-gray-900">{formatDecimal(totalHours)}h</div></div>
                           <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-gray-500 mb-0.5 font-bold">總單量</div><div className="text-base font-extrabold text-gray-900">{tripCount}</div></div>
-                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-emerald-700 mb-0.5 font-bold">平均時薪</div><div className="text-base font-extrabold text-emerald-600">${formatNumber(hourlyWage ? hourlyWage.toFixed(1) : 0)}</div></div>
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-gray-500 mb-0.5 font-bold">每小時單量</div><div className="text-base font-extrabold text-gray-900">{formatDecimal(tripsPerHour)}</div></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl flex justify-between items-center px-3"><div className="text-[10px] text-gray-500 font-bold">每趟淨行程</div><div className="text-base font-extrabold text-gray-900">${formatDecimal(avgNetTripCost)}</div></div>
-                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl flex justify-between items-center px-3"><div className="text-[10px] text-emerald-700 font-bold">含獎勵均價</div><div className="text-base font-extrabold text-emerald-600">${formatDecimal(avgGrossTripCost)}</div></div>
+                    <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-emerald-700 mb-0.5 font-bold">平均時薪</div><div className="text-base font-extrabold text-emerald-600">${formatNumber(hourlyWage ? hourlyWage.toFixed(1) : 0)}</div></div>
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-gray-500 font-bold">每趟淨行程</div><div className="text-base font-extrabold text-gray-900">${formatDecimal(avgNetTripCost)}</div></div>
+                          <div className="bg-emerald-50/90 backdrop-blur-sm p-2 rounded-xl text-center"><div className="text-[10px] text-emerald-700 font-bold">含獎勵均價</div><div className="text-base font-extrabold text-emerald-600">${formatDecimal(avgGrossTripCost)}</div></div>
                     </div>
                     
                     {/* Work Days */}
@@ -393,9 +395,6 @@ const OverviewStats = memo(({ annualStats, todayStats, onEditToday }) => (
 const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLength }) => {
   const [selectedDayRecord, setSelectedDayRecord] = useState(null);
   
-  // Track if it's mobile to adjust logic (using a simple width check or CSS classes)
-  // But here we use CSS classes for rendering logic.
-  // We need a state to track if something is selected.
   const hasSelection = !!selectedDayRecord;
 
   useEffect(() => {
@@ -408,6 +407,7 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
           const tripCost = r.tripCost || 0;
           const promo = r.promo || 0;
           const tripCount = r.tripCount || 0;
+          const hours = r.totalHoursDec || 0;
           
           return {
               isDaily: true,
@@ -418,9 +418,10 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
                   tips: r.tips || 0,
                   other: r.other || 0
               },
-              totalHours: r.totalHoursDec || 0,
+              totalHours: hours,
               totalTrips: tripCount,
               hourlyWage: r.hourlyWage || 0,
+              tripsPerHour: hours > 0 ? tripCount / hours : 0, // Daily TPH
               avgNetTripCost: tripCount > 0 ? tripCost / tripCount : 0,
               avgGrossTripCost: tripCount > 0 ? (tripCost + promo) / tripCount : 0
           };
@@ -432,10 +433,13 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
               totalHours: 0,
               totalTrips: 0,
               hourlyWage: 0,
+              tripsPerHour: 0,
               avgNetTripCost: 0,
               avgGrossTripCost: 0
           };
       } else {
+          // Weekly TPH
+          const weeklyTPH = weeklyStats.totalHours > 0 ? weeklyStats.totalTrips / weeklyStats.totalHours : 0;
           return {
               isDaily: false,
               dateLabel: "全週合計",
@@ -443,6 +447,7 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
               totalHours: weeklyStats.totalHours,
               totalTrips: weeklyStats.totalTrips,
               hourlyWage: weeklyStats.weeklyHourlyWage,
+              tripsPerHour: weeklyTPH,
               avgNetTripCost: weeklyStats.avgNetTripCost,
               avgGrossTripCost: weeklyStats.avgGrossTripCost
           };
@@ -476,10 +481,6 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
                   {weeklyStats.dailyData.map((day, index) => {
                       const heightPct = weeklyStats.maxDailyIncome > 0 ? (day.income / weeklyStats.maxDailyIncome) * 100 : 0;
                       const isSelected = selectedDayRecord && selectedDayRecord.date === day.date;
-                      
-                      // Mobile Logic:
-                      // If NOT selected anything: Show short label for ALL (k format)
-                      // If selected: Show full label ONLY for selected, hide others.
                       const showMobileLabel = !hasSelection || isSelected;
 
                       return (
@@ -491,14 +492,9 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
                             <div className="relative w-full flex justify-end flex-col items-center h-[85%]">
                                 {day.income > 0 && (
                                     <>
-                                        {/* Desktop: Always show full number */}
                                         <div className="hidden sm:block mb-1 text-[10px] text-gray-600 font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1">
                                             ${formatNumber(day.income)}
                                         </div>
-
-                                        {/* Mobile: Dynamic Logic */}
-                                        {/* Logic: Show if (No Selection OR Is Selected) */}
-                                        {/* Format: If Selected -> Full Number, If Default -> Short (k) */}
                                         <div className={`sm:hidden mb-1 text-[10px] font-bold bg-white shadow-sm px-1.5 py-0.5 rounded border border-gray-200 transform -translate-y-1 transition-opacity duration-200 ${showMobileLabel ? 'opacity-100' : 'opacity-0'}`}>
                                             {isSelected 
                                                 ? `$${formatNumber(day.income)}` 
@@ -540,11 +536,12 @@ const WeeklyView = memo(({ weeklyStats, handleWeekChange, fetchError, recordsLen
                 <div className="grid grid-cols-3 gap-2 sm:gap-3">
                       <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Clock size={12}/> 總工時</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{formatDecimal(displayStats.totalHours)}<span className="text-[10px] sm:text-xs font-normal text-gray-400 ml-0.5">h</span></div></div>
                       <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Bike size={12}/> 總單量</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{displayStats.totalTrips}</div></div>
-                      <div className="bg-emerald-50 p-2 sm:p-3 rounded-xl text-center border border-emerald-100"><div className="text-[10px] sm:text-xs text-emerald-700 mb-1 flex items-center justify-center gap-1 font-medium"><Activity size={12}/> {displayStats.isDaily ? '當日時薪' : '當週時薪'}</div><div className="text-base sm:text-lg font-extrabold text-emerald-600">${formatDecimal(displayStats.hourlyWage)}</div></div>
+                      <div className="bg-gray-50 p-2 sm:p-3 rounded-xl text-center border border-gray-100"><div className="text-[10px] sm:text-xs text-gray-500 mb-1 flex items-center justify-center gap-1 font-medium"><Activity size={12}/> 每小時單量</div><div className="text-base sm:text-lg font-extrabold text-gray-900">{formatDecimal(displayStats.tripsPerHour)}</div></div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                      <div className="bg-white p-2 sm:p-3 rounded-xl flex justify-between items-center px-3 sm:px-4 border border-gray-200 shadow-sm"><div className="text-[10px] sm:text-xs text-gray-500 font-medium">每趟<br/>淨行程</div><div className="text-base sm:text-xl font-extrabold text-gray-900">${formatDecimal(displayStats.avgNetTripCost)}</div></div>
-                      <div className="bg-white p-2 sm:p-3 rounded-xl flex justify-between items-center px-3 sm:px-4 border border-gray-200 shadow-sm"><div className="text-[10px] sm:text-xs text-gray-500 flex flex-col font-medium"><span className="flex items-center gap-1 text-emerald-600"><TrendingUp size={12}/> 含獎勵</span><span>每趟平均</span></div><div className="text-base sm:text-xl font-extrabold text-emerald-600">${formatDecimal(displayStats.avgGrossTripCost)}</div></div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                      <div className="bg-emerald-50 p-2 sm:p-3 rounded-xl text-center border border-emerald-100"><div className="text-[10px] sm:text-xs text-emerald-700 mb-1 flex items-center justify-center gap-1 font-medium">{displayStats.isDaily ? '當日時薪' : '當週時薪'}</div><div className="text-base sm:text-lg font-extrabold text-emerald-600">${formatDecimal(displayStats.hourlyWage)}</div></div>
+                      <div className="bg-white p-2 sm:p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] sm:text-xs text-gray-500 font-medium">每趟淨行程</div><div className="text-base sm:text-xl font-extrabold text-gray-900">${formatDecimal(displayStats.avgNetTripCost)}</div></div>
+                      <div className="bg-white p-2 sm:p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] sm:text-xs text-emerald-600 font-medium">含獎勵均價</div><div className="text-base sm:text-xl font-extrabold text-emerald-600">${formatDecimal(displayStats.avgGrossTripCost)}</div></div>
                 </div>
             </div>
         </div>
@@ -656,9 +653,7 @@ const MonthlyView = memo(({
                     <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-6 mt-4">
                         <div className="text-center"><div className="text-sm text-gray-500 font-bold mb-1">本月總收入</div><div className="text-4xl font-black text-gray-900">{formatCurrency(targetData.totalIncome)}</div></div>
                         
-                        <div className="text-center text-xs font-medium text-gray-500 pb-2">
-                             <span>{targetData.tripCount} 單</span> • <span>{formatDecimal(targetData.totalHours)} h</span>
-                        </div>
+                        {/* Removed Trip/Hours line as requested */}
 
                         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
                             <div className="text-center p-2 rounded-xl bg-gray-50"><div className="text-xs text-gray-500 mb-1 font-medium">行程費用</div><div className="text-base font-bold text-gray-900">${formatNumber(targetData.tripCost)}</div></div>
@@ -668,11 +663,16 @@ const MonthlyView = memo(({
                         </div>
                         <div className="space-y-3 pt-2">
                             <h3 className="text-base font-bold text-gray-900 ml-1">月效率分析</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white p-4 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-xs text-gray-500 font-bold mb-1">平均時薪</div><div className="text-2xl font-extrabold text-emerald-600">${formatNumber(targetData.hourlyWage.toFixed(1))}</div></div>
-                                <div className="bg-white p-4 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-xs text-gray-500 font-bold mb-1">每小時單量</div><div className="text-2xl font-extrabold text-gray-900">{formatDecimal(targetData.tripsPerHour)}</div></div>
-                                <div className="bg-white p-4 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-xs text-gray-500 font-bold mb-1">每趟淨行程</div><div className="text-2xl font-extrabold text-gray-900">${formatDecimal(targetData.avgNetTripCost)}</div></div>
-                                <div className="bg-white p-4 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-xs text-gray-500 font-bold mb-1">含獎勵均價</div><div className="text-2xl font-extrabold text-emerald-600">${formatDecimal(targetData.avgGrossTripCost)}</div></div>
+                            {/* Updated Monthly Efficiency Grid */}
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-white p-2 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-[10px] text-gray-500 font-bold mb-1">總工時</div><div className="text-lg font-extrabold text-gray-900">{formatDecimal(targetData.totalHours)}h</div></div>
+                                <div className="bg-white p-2 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-[10px] text-gray-500 font-bold mb-1">總單量</div><div className="text-lg font-extrabold text-gray-900">{targetData.tripCount}</div></div>
+                                <div className="bg-white p-2 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-[10px] text-gray-500 font-bold mb-1">每小時單量</div><div className="text-lg font-extrabold text-gray-900">{formatDecimal(targetData.tripsPerHour)}</div></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="bg-white p-2 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-[10px] text-gray-500 font-bold mb-1">平均時薪</div><div className="text-lg font-extrabold text-emerald-600">${formatNumber(targetData.hourlyWage.toFixed(1))}</div></div>
+                                <div className="bg-white p-2 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-[10px] text-gray-500 font-bold mb-1">每趟淨行程</div><div className="text-lg font-extrabold text-gray-900">${formatDecimal(targetData.avgNetTripCost)}</div></div>
+                                <div className="bg-white p-2 rounded-xl flex flex-col justify-center items-center border border-gray-200 shadow-sm"><div className="text-[10px] text-gray-500 font-bold mb-1">含獎勵均價</div><div className="text-lg font-extrabold text-emerald-600">${formatDecimal(targetData.avgGrossTripCost)}</div></div>
                             </div>
                         </div>
                         
@@ -844,10 +844,11 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
         const avgHourly = hours > 0 ? totalIncome / hours : 0;
         const avgNetTrip = totalTrips > 0 ? tripCost / totalTrips : 0;
         const avgGrossTrip = totalTrips > 0 ? (tripCost + promo) / totalTrips : 0;
+        const tripsPerHour = hours > 0 ? totalTrips / hours : 0;
 
         return { 
             tripCost, promo, tips, other, hours, fullDays, halfDays, offDays, remainingDays,
-            totalIncome, totalTrips, avgHourly, avgNetTrip, avgGrossTrip
+            totalIncome, totalTrips, avgHourly, avgNetTrip, avgGrossTrip, tripsPerHour
         };
     }, [monthlyDataMap, currentYearView]);
 
@@ -883,9 +884,16 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
                     <span className="text-2xl font-black tracking-tight">{formatCurrency(summary.totalIncome)}</span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">總工時</div><div className="text-xl font-black text-gray-900">{formatDecimal(summary.hours)}h</div></div>
-                      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">總單量</div><div className="text-xl font-black text-gray-900">{formatNumber(summary.totalTrips)}</div></div>
+                {/* Efficiency Analysis Header */}
+                <div className="mt-4 mb-2">
+                    <h3 className="text-sm font-bold text-gray-900 ml-1">效率分析</h3>
+                </div>
+                
+                {/* Updated Annual Efficiency Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] text-gray-500 font-bold mb-1">總工時</div><div className="text-lg font-extrabold text-gray-900">{formatDecimal(summary.hours)}h</div></div>
+                      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] text-gray-500 font-bold mb-1">總單量</div><div className="text-lg font-extrabold text-gray-900">{formatNumber(summary.totalTrips)}</div></div>
+                      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] text-gray-500 font-bold mb-1">每小時單量</div><div className="text-lg font-extrabold text-gray-900">{formatDecimal(summary.tripsPerHour)}</div></div>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-2">
@@ -1008,7 +1016,7 @@ const RecentRecordList = memo(({ recentStats, sheetUrl, fetchFromSheet, isLoadin
                         </div>
                         <div className="grid grid-cols-3 gap-2 pl-3">
                             <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">時薪</div><div className={`font-extrabold text-lg ${isZero ? 'text-gray-400' : 'text-emerald-600'}`}>${displayRecord.hourlyWage.toFixed(0)}</div></div>
-                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">每小時單量</div><div className={`font-extrabold text-lg ${isZero ? 'text-gray-400' : 'text-gray-900'}`}>{formatDecimal(displayRecord.tripsPerHour)}</div></div>
+                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">總單量</div><div className={`font-extrabold text-lg ${isZero ? 'text-gray-400' : 'text-gray-900'}`}>{formatNumber(displayRecord.tripCount)}</div></div>
                             <div className="bg-gray-50 rounded-xl p-3 border border-gray-100"><div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-bold">工時</div><div className={`font-extrabold text-base leading-7 ${isZero ? 'text-gray-400' : 'text-gray-900'}`}>{formatDuration(displayRecord.totalHoursDec)}</div></div>
                         </div>
                         {/* Display Other Income if exists */}
@@ -1815,10 +1823,11 @@ export default function UberTrackV3_Cloud() {
     // 計算每趟平均
     const avgNetTripCost = totalTrips > 0 ? totalTripCost / totalTrips : 0; 
     const avgGrossTripCost = totalTrips > 0 ? (totalTripCost + totalPromo) / totalTrips : 0; 
+    const tripsPerHour = totalHours > 0 ? totalTrips / totalHours : 0; // 修正：計算週的每小時單量
 
     return { 
         totalIncome, recordCount, startStr, endStr, weekNumber, dailyData: daysData, maxDailyIncome, 
-        totalHours, totalTrips, weeklyHourlyWage, avgNetTripCost, avgGrossTripCost,
+        totalHours, totalTrips, weeklyHourlyWage, avgNetTripCost, avgGrossTripCost, tripsPerHour,
         breakdown: { tripCost: totalTripCost, promo: totalPromo, tips: totalTips, other: totalOther }
     };
   }, [stats.recordMap, currentWeekBase]);
