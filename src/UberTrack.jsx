@@ -788,6 +788,7 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
     const summary = useMemo(() => {
         let tripCost=0, promo=0, tips=0, hours=0, other=0;
         let fullDays = 0, halfDays = 0, offDays = 0;
+        let totalTrips = 0;
 
         const yearRecords = [];
         Object.values(monthlyDataMap).forEach(d => {
@@ -797,6 +798,7 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
                 tips += d.tips;
                 other += d.other;
                 hours += d.totalHours;
+                totalTrips += d.tripCount;
                 yearRecords.push(...d.records);
             }
         });
@@ -808,6 +810,28 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
         });
 
         const now = new Date();
+        let targetDate = new Date(currentYearView, 11, 31);
+        if (currentYearView === now.getFullYear()) {
+            targetDate = new Date(); 
+        } else if (currentYearView > now.getFullYear()) {
+             targetDate = new Date(currentYearView, 0, 0); 
+        }
+
+        const currentDate = new Date(currentYearView, 0, 1);
+        
+        if (currentYearView <= now.getFullYear()) {
+            while (currentDate <= targetDate) {
+                const dStr = getLocalDateString(currentDate);
+                const h = dailyHours[dStr] || 0;
+                
+                if (h <= 1) offDays++;
+                else if (h < 4) halfDays++;
+                else fullDays++;
+
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
         let remainingDays = 0;
         if (currentYearView === now.getFullYear()) {
              const endOfYear = new Date(currentYearView, 11, 31);
@@ -815,29 +839,16 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
              remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
              if (remainingDays < 0) remainingDays = 0;
         }
-        
-        // 修正邏輯：遍歷全年每一天，若當日無資料則自動視為休假 (offDays)
-        // 起始日：1月1日
-        // 結束日：如果是今年，則算到今天；如果是過去年，算到12/31
-        let targetDate = new Date(currentYearView, 11, 31);
-        if (currentYearView === now.getFullYear()) {
-            targetDate = new Date(); 
-        }
 
-        const currentDate = new Date(currentYearView, 0, 1);
-        
-        while (currentDate <= targetDate) {
-             const dStr = getLocalDateString(currentDate);
-             const h = dailyHours[dStr] || 0;
-             
-             if (h <= 1) offDays++;
-             else if (h < 4) halfDays++;
-             else fullDays++;
+        const totalIncome = tripCost + promo + tips + other;
+        const avgHourly = hours > 0 ? totalIncome / hours : 0;
+        const avgNetTrip = totalTrips > 0 ? tripCost / totalTrips : 0;
+        const avgGrossTrip = totalTrips > 0 ? (tripCost + promo) / totalTrips : 0;
 
-             currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        return { tripCost, promo, tips, other, hours, fullDays, halfDays, offDays, remainingDays };
+        return { 
+            tripCost, promo, tips, other, hours, fullDays, halfDays, offDays, remainingDays,
+            totalIncome, totalTrips, avgHourly, avgNetTrip, avgGrossTrip
+        };
     }, [monthlyDataMap, currentYearView]);
 
     const mainChartProps = useMemo(() => {
@@ -869,13 +880,18 @@ const AnnualView = memo(({ currentYearView, setCurrentYearView, monthlyDataMap, 
 
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-4 flex justify-between items-center px-5 shadow-lg text-white">
                     <span className="text-xs font-bold text-emerald-100 uppercase tracking-wider">年度總收入</span>
-                    <span className="text-2xl font-black tracking-tight">{formatCurrency(annualStats.totalIncome)}</span>
+                    <span className="text-2xl font-black tracking-tight">{formatCurrency(summary.totalIncome)}</span>
                 </div>
+                
                 <div className="grid grid-cols-2 gap-3">
                       <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">總工時</div><div className="text-xl font-black text-gray-900">{formatDecimal(summary.hours)}h</div></div>
-                      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">平均時薪</div><div className="text-xl font-black text-emerald-600">${formatNumber(annualStats.avgHourly.toFixed(1))}</div></div>
-                      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">淨行程均價</div><div className="text-xl font-black text-gray-900">${formatDecimal(annualStats.avgNetTrip)}</div></div>
-                      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">含獎勵均價</div><div className="text-xl font-black text-emerald-600">${formatDecimal(annualStats.avgGrossTrip)}</div></div>
+                      <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center"><div className="text-xs text-gray-500 font-bold mb-1">總單量</div><div className="text-xl font-black text-gray-900">{formatNumber(summary.totalTrips)}</div></div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] text-gray-500 font-bold mb-1">平均時薪</div><div className="text-lg font-black text-emerald-600">${formatNumber(summary.avgHourly.toFixed(1))}</div></div>
+                      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] text-gray-500 font-bold mb-1">淨行程均價</div><div className="text-lg font-black text-gray-900">${formatDecimal(summary.avgNetTrip)}</div></div>
+                      <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center text-center"><div className="text-[10px] text-gray-500 font-bold mb-1">含獎勵均價</div><div className="text-lg font-black text-emerald-600">${formatDecimal(summary.avgGrossTrip)}</div></div>
                 </div>
 
                 {/* Work Days Analysis Section */}
